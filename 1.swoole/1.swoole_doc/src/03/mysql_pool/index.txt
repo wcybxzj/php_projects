@@ -1,0 +1,68 @@
+mysql 连接数的概念:
+mysql 最大连接数是500        show variables like 'max_connections';
+我觉得也可以理解成500个线程  show processlit;
+意思是说并发连接最多500，超过MYSQL就会无法服务,
+出现too many connections,如果请求都停下来 等一会服务就能恢复
+=======================================================================================================================================
+mysql连接池好处:
+好处1:
+连接池是解决(高并发)问题的场景下mysql的安全可用
+好处2:
+如果使用连接池,运维时会轻松很多，因为无论业务如何出问题,mysql不会出问题
+=======================================================================================================================================
+mysql连接池的理解:
+理解1:
+不是单纯提高sql运行速度,而是保护mysql不被乱用 出现 Too many connections
+理解2:
+具体是不是可以像队列一样去让高并发的请求串行化 我还没研究
+=======================================================================================================================================
+实验条件:
+server 开501个php-fpm进程
+mysql也在这台机器上
+不用连接池
+
+监控shell 一直查询mysql连接数(实际就是线程数)
+cd /root/www/mysql_www
+./14.show_Threads_connected.sh
+------------------------------------------------------------------------------------------------------------------------------------
+测试1:pdo和mysqli 研究下不进行mysql_close会有什么结果
+结论1:
+这就是为什么都用connect,没人用pconnect的原因,如果要用pconnect,mysql还要设置来让不活跃的连接关闭
+结论2:
+pconnect你用完连接关闭不关闭照样,mysql连接一直增长
+connect你用完连接关闭不关闭,最后照样连接会自动关闭只要php结束
+
+pdo:
+使用pconnect时，即使程序执行完，无论是否php主动关闭mysql, 连接数都会增长,
+也就是说直接用浏览器刷新就能刷死mysql
+http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/2.client_pdo_direct_insert_mysql.php?pconnect=true&close=true
+http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/2.client_pdo_direct_insert_mysql.php?pconnect=true&close=false
+使用connect时,无论是否关闭连接, 连接数增长后,只要最后close了mysql连接 mysql连接数就会减下来
+http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/2.client_pdo_direct_insert_mysql.php?pconnect=false&close=true
+http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/2.client_pdo_direct_insert_mysql.php?pconnect=false&close=false
+
+mysqli:
+使用pconnect时，同pdo
+http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/3.client_mysqli_direct_insert_mysql.php?pconnect=true&close=true
+http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/3.client_mysqli_direct_insert_mysql.php?pconnect=true&close=false
+使用connect时，同pdo
+http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/3.client_mysqli_direct_insert_mysql.php?pconnect=false&close=true
+http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/3.client_mysqli_direct_insert_mysql.php?pconnect=false&close=false
+------------------------------------------------------------------------------------------------------------------------------------
+测试2:
+php用connect 直接连接mysql,并发到600 mysql才出现服务不可用
+ab -c 600 -n  2000 http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/2.client_pdo_direct_insert_mysql.php?pconnect=false&close=true
+ab -c 600 -n  2000 http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/3.client_mysqli_direct_insert_mysql.php?pconnect=false&close=true
+------------------------------------------------------------------------------------------------------------------------------------
+测试3:
+php用pconnect 直接连接mysql, 并发100 mysql就已经服务不可用了
+mysqli版本的pconnect连接mysql:
+ab -c 100 -n 2000 http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/2.client_pdo_direct_insert_mysql.php?pconnect=true&close=true
+pdo版本的pconnect连接mysql:
+ab -c 100 -n 2000 http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/3.client_mysqli_direct_insert_mysql.php?pconnect=true&close=true
+------------------------------------------------------------------------------------------------------------------------------------
+测试4:
+使用swoole做mysql连接池
+以避免出现 mysql too many connections,因为你连接池到mysql的 pconnect数字是在连接池上控制的:
+php swoole_mysql_pool_server.php
+ab -c 100 -n 20000 http://192.168.91.11/php_www/1.swoole/1.swoole_doc/src/03/mysql_pool/1.client_use_swoole.php

@@ -1,0 +1,11 @@
+0.mysql和redis开启
+
+1.四个域名建立好nginx
+192.168.91.11		miaosha1.com
+192.168.91.11		miaosha2.com
+192.168.91.11		miaosha3.com
+192.168.91.11		miaosha4.co
+
+2.config.php设置秒杀开始和秒杀结束时间
+
+3.访问http://miaosha1.com/php_www/2.second_kill/level1/miaosha_index.php 就可以走流程

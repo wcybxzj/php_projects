@@ -1,0 +1,43 @@
+redis做为纯内存服务和memcached做个性能比较
+
+============================================================================
+redis:
+redis的配置:
+maxmemory:1G
+maxclients:10000
+关闭rdb 和 aof
+LRU策略:allkeys-lru
+tcp-keepalive 60
+
+redis的监控
+watch -n1 redis-cli  -h 127.0.0.1 -p 6379  info memory
+watch -n1 redis-cli  -h 127.0.0.1 -p 6379  info server
+watch -n1 redis-cli  -h 127.0.0.1 -p 6379  info clinets
+watch -n1 redis-cli  -h 127.0.0.1 -p 6379  info stats
+watch -n1 redis-cli  -h 127.0.0.1 -p 6379  info cpu
+watch -n1 redis-cli  -h 127.0.0.1 -p 6379  info commandstats
+watch -n1 redis-cli  -h 127.0.0.1 -p 6379  info keyspace
+============================================================================
+memcached:
+php安装memcached扩展
+/usr/local/php/bin/phpize
+./configure --with-php-config=/usr/local/php/bin/php-config --with-libmemcached-dir=/usr/local/libmemcached/
+make && make install
+
+memcached监控:
+telnet 127.0.0.1 11211
+stats items
+STAT items:2:number 700(有700个数据)
+或者
+http://192.168.91.11/php_www/5.redis_vs_memcached/memcache.php 看其中的item数
+============================================================================
+测试:
+redis-server redis.conf
+memcached -m 1024m -p 11211 -u root -P /var/run/memcached.pid -c 10000
+
+ab -c1000 -n10000 http://192.168.91.11/php_www/5.redis_vs_memcached/1.redis.php
+ab -c1000 -n10000 http://192.168.91.11/php_www/5.redis_vs_memcached/2.memcached.php
+
+结论:
+memcached是11秒,redis是22秒
+但是redis数据正好是10w,但是memcached数据才插入了6万

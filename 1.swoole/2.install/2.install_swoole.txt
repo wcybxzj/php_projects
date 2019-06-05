@@ -1,0 +1,9 @@
+cp -rf /root/soft/php/swoole-1.10.4 /root/soft/php/php-7.1.17/ext/swoole-1.10.4/
+cd /root/soft/php/php-7.1.17/ext/swoole-1.10.4/
+
+cd /root/soft/php/php-7.1.17/ext/swoole-1.10.4/
+./configure --with-php-config=/root/www/php-7-1-7-install/bin/php-config
+make
+make install
+
+/root/soft/php/php-7.1.17/sapi/cli/php -d extension='/root/soft/php/php-7.1.17/ext/swoole-1.10.4/modules/swoole.so' -m
